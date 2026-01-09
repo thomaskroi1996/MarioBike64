@@ -17,3 +17,4 @@ The frequency of hitting the acceleration button scales linearly with the power 
 
 
 I will also add functionality for a simple speed sensor, and also only HR modes.
+Soon I will start working on a GUI, for difficulty selection, as well as device and mode selections.
