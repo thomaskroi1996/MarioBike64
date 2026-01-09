@@ -31,7 +31,7 @@ class HRLogic:
 
     async def hr_acc(self):
         while True:
-            if self.current_hr < 50:
+            if self.current_hr < self.HR_THRESHOLD:
                 await asyncio.sleep(0.1)
                 continue
 
