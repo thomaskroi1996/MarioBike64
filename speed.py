@@ -10,14 +10,16 @@ ui = UInput()
 
 class SpeedLogic:
     def __init__(self):
-        # Standard Cycling Power Measurement Characteristic UUID
+        # standard UUID for speed
         self.SPEED_MEASUREMENT_UUID = "00002a5b-0000-1000-8000-00805f9b34fb"
-        self.SPEED_THRESHOLD = 17
+        self.ACC_THRESHOLD = 17
+        self.ITEM_THRESHOLD = 20
         self.current_speed = 0
         self.last_revs = None
         self.last_time = None
         self.wheel_circum_mm = 2105
 
+    # just bluetooth gui
     def get_target_address(self, devices):
         root = tk.Tk()
         app = gui.BluetoothSelectionGUI(root, devices)
@@ -29,8 +31,8 @@ class SpeedLogic:
         # data[1:5]: Cumulative Wheel Revolutions (uint32)
         # data[5:7]: Last Wheel Event Time (uint16)
 
-        revs = struct.unpack('<I', data[1:5])[0]
-        event_time = struct.unpack('<H', data[5:7])[0]
+        revs = struct.unpack("<I", data[1:5])[0]
+        event_time = struct.unpack("<H", data[5:7])[0]
 
         if self.last_revs is not None:
             delta_revs = revs - self.last_revs
@@ -50,13 +52,21 @@ class SpeedLogic:
 
         return 0.0, revs, event_time
 
+    # item release based on speed
+    async def speed_item(self):
+        if self.current_speed > self.ITEM_THRESHOLD:
+            ui.write(e.EV_KEY, e.KEY_Y, 1)
+            ui.syn()
+            await asyncio.sleep(0.05)
+
+    # acceleration based on speed in km/h
     async def speed_acc(self):
         while True:
-            if self.current_speed < self.SPEED_THRESHOLD:
+            if self.current_speed < self.ACC_THRESHOLD:
                 await asyncio.sleep(0.1)
                 continue
 
-            # delay of repeated presses is linear with hr 
+            # delay of repeated presses is linear with hr
             delay = max(0, 0.2 * (1 - (self.current_speed / 190)))
 
             ui.write(e.EV_KEY, e.KEY_LEFTSHIFT, 1)
@@ -88,9 +98,3 @@ class SpeedLogic:
             print("Reading raw data (Press Ctrl+C to stop)...")
             while True:
                 await asyncio.sleep(1)
-
-
-
-
-
-

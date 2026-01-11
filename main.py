@@ -1,14 +1,15 @@
 import os
 
-# Force uinput before importing pynput
 os.environ["PYNPUT_BACKEND_KEYBOARD"] = "uinput"
 os.environ["PYNPUT_BACKEND_MOUSE"] = "dummy"
+os.environ["QT_QPA_PLATFORM"] = "xcb"
 
 import asyncio
 import gui
 from power import PowerLogic
 from hr import HRLogic
 from speed import SpeedLogic
+from steering import VideoSteering
 
 async def start_power_mode():
     run = PowerLogic()
@@ -22,24 +23,49 @@ async def start_speed_mode():
     run = SpeedLogic()
     await asyncio.gather(run.speed_acc(), run.speed_ble())
 
-if __name__ == "__main__":
+async def launch_game():
+    game_command = "mupen64plus mk64.z64"
+ 
+    print(f"Launching game: {game_command}")
+
+    process = await asyncio.create_subprocess_shell(
+        game_command,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL
+    )
+
+    await process.wait()
+    print("Game closed.")
+
+async def main():
+    # get input from mode selection
     mode = gui.get_user_mode()
 
-    if mode == "POWER":
-        print("Starting Power Mode...")
-        try:
-            asyncio.run(start_power_mode())
-        except KeyboardInterrupt:
-            print("\nStopped by user.")
-    elif mode == "HR":
-        print("Starting HR Mode...")
-        try:
-            asyncio.run(start_hr_mode())
-        except KeyboardInterrupt:
-            print("\nStopped by user.")
-    elif mode == "SPEED":
-        print("Starting SPEED Mode...")
-        try:
-            asyncio.run(start_speed_mode())
-        except KeyboardInterrupt:
-            print("\nStopped by user.")
+    try:
+        async with asyncio.TaskGroup() as tg:
+            print(f"Initializing Systems for {mode} mode...")
+
+            # steer using webcam
+            steer_system = VideoSteering()
+            tg.create_task(steer_system.run())
+
+            # select mode for acceleration logic
+            if mode == "POWER":
+                print("Starting Power Mode...")
+                tg.create_task(start_power_mode())
+            elif mode == "HR":
+                print("Starting HR Mode...")
+                tg.create_task(start_hr_mode())
+            elif mode == "SPEED":
+                print("Starting SPEED Mode...")
+                tg.create_task(start_speed_mode())
+
+    except* Exception as eg:
+        for error in eg.exceptions:
+            print(f"Task error: {error}")
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Stopping MarioBike64 ... ")

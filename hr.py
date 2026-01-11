@@ -1,6 +1,5 @@
 import asyncio
 from bleak import BleakScanner, BleakClient
-import struct
 from evdev import UInput, ecodes as e
 import tkinter as tk
 import gui
@@ -10,9 +9,10 @@ ui = UInput()
 
 class HRLogic:
     def __init__(self):
-        # Standard Cycling Power Measurement Characteristic UUID
+        # standard UUID for HR
         self.HR_MEASUREMENT_UUID = "00002a37-0000-1000-8000-00805f9b34fb"
-        self.HR_THRESHOLD = 100
+        self.ACC_THRESHOLD = 100
+        self.ITEM_THRESHOLD = 120
         self.current_hr = 0
 
     def get_target_address(self, devices):
@@ -29,13 +29,14 @@ class HRLogic:
         self.current_hr = hr_value
         print(f"\rHeart Rate: {hr_value} BPM")
 
+    # hr based acceleration
     async def hr_acc(self):
         while True:
-            if self.current_hr < self.HR_THRESHOLD:
+            if self.current_hr < self.ACC_THRESHOLD:
                 await asyncio.sleep(0.1)
                 continue
 
-            # delay of repeated presses is linear with hr 
+            # delay of repeated presses is linear with hr
             delay = max(0, 0.2 * (1 - (self.current_hr / 190)))
 
             ui.write(e.EV_KEY, e.KEY_LEFTSHIFT, 1)
@@ -47,6 +48,12 @@ class HRLogic:
             ui.syn()
 
             await asyncio.sleep(delay)
+
+    async def hr_item(self):
+        if self.current_hr > self.ITEM_THRESHOLD:
+            ui.write(e.EV_KEY, e.KEY_Y, 1)
+            ui.syn()
+            await asyncio.sleep(0.05)
 
     # handles bluetooth connection
     async def hr_ble(self):
