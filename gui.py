@@ -1,6 +1,4 @@
 import tkinter as tk
-from tkinter import messagebox
-
 
 class MarioBikeGUI:
     def __init__(self, root):
